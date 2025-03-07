@@ -6,7 +6,7 @@ export default function Home() {
     <div>
       <div className="relative h-[600px]">
         <img
-          src="images/homepageimg.jfif"
+          src="images/homeimg.jpg"
           alt="Hero"
           className="w-full h-full object-cover"
         />
