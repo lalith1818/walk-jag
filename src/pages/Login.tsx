@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
@@ -8,9 +8,10 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
     setLoading(true);
@@ -19,9 +20,9 @@ export default function Login() {
     setLoading(false);
 
     if (result.success) {
-      navigate('/'); // Redirect after login
+      navigate(location.state?.from || '/'); // Redirect to intended path or homepage
     } else {
-      setError(result.message);
+      setError(result.message || 'An unknown error occurred');
     }
   };
 

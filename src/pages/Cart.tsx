@@ -1,10 +1,21 @@
-import React from 'react';
 import { useCart } from '../context/CartContext';
 import { Trash2, Plus, Minus } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate,useLocation} from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 export default function Cart() {
   const { items, removeFromCart, updateQuantity, total } = useCart();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const handleCheckout = () => {
+    if (!user) {
+      navigate('/login', { state: { from: location.pathname } }); // Save intended path
+    } else {
+      navigate('/checkout');
+    }
+  };
 
   if (items.length === 0) {
     return (
@@ -24,9 +35,9 @@ export default function Cart() {
       <div className="flex flex-col lg:flex-row gap-8">
         <div className="flex-1">
           {items.map((item) => (
-            <div key={`${item.id}-${item.selectedSize}-${item.selectedColor}`} className="flex items-center border-b py-4">
+            <div key={`${item.id}-${item.selectedSize}-${item.name}`} className="flex items-center border-b py-4">
               <img
-                src={item.image}
+                src={`http://localhost:5000${item.image}`}
                 alt={item.name}
                 className="w-24 h-24 object-cover rounded"
               />
@@ -34,20 +45,19 @@ export default function Cart() {
               <div className="ml-4 flex-1">
                 <h3 className="font-semibold">{item.name}</h3>
                 <p className="text-gray-600">Size: {item.selectedSize}</p>
-                <p className="text-gray-600">Color: {item.selectedColor}</p>
                 <p className="text-gray-600">Rs.{item.price}</p>
               </div>
 
               <div className="flex items-center space-x-2">
                 <button
-                  onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                  onClick={() => updateQuantity(item.id, item.selectedSize, item.name, item.quantity - 1)}
                   className="p-1 hover:bg-gray-100 rounded"
                 >
                   <Minus className="h-4 w-4" />
                 </button>
                 <span className="w-8 text-center">{item.quantity}</span>
                 <button
-                  onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                  onClick={() => updateQuantity(item.id, item.selectedSize, item.name, item.quantity + 1)}
                   className="p-1 hover:bg-gray-100 rounded"
                 >
                   <Plus className="h-4 w-4" />
@@ -55,7 +65,7 @@ export default function Cart() {
               </div>
 
               <button
-                onClick={() => removeFromCart(item.id)}
+                onClick={() => removeFromCart(item.id, item.selectedSize, item.name)}
                 className="ml-4 p-2 text-red-600 hover:text-red-800"
               >
                 <Trash2 className="h-5 w-5" />
@@ -85,12 +95,12 @@ export default function Cart() {
               </div>
             </div>
 
-            <Link
-              to="/checkout"
+            <button
+              onClick={handleCheckout}
               className="mt-6 block w-full bg-black text-white text-center py-2 rounded-md hover:bg-gray-800"
             >
               Proceed to Checkout
-            </Link>
+            </button>
           </div>
         </div>
       </div>

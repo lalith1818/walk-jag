@@ -10,13 +10,16 @@ import About from './pages/About';
 import Contact from './pages/Contact';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import UserProfile from './pages/UserProfile';
+import OrderSuccess from './pages/OrderSuccess';
+
 
 function App() {
   return (
     <Router>
-      <AuthProvider>
         <CartProvider>
-          <div className="min-h-screen bg-gray-50">
+          <AuthProvider>
+          <div className="min-h-screen bg-gray-100">
             <Navbar /> {/* Navbar always visible */}
             <Routes>
               <Route path="/" element={<Home />} />
@@ -27,10 +30,12 @@ function App() {
               <Route path="/contact" element={<Contact />} />
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
+              <Route path="/profile" element={<UserProfile />} />
+              <Route path="/order-success" element={<OrderSuccess />} /> 
             </Routes>
           </div>
+          </AuthProvider>
         </CartProvider>
-      </AuthProvider>
     </Router>
   );
 }

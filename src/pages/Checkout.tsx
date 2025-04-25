@@ -1,27 +1,150 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useCart } from '../context/CartContext';
 import { useNavigate } from 'react-router-dom';
+import Razorpay from 'razorpay';
 
 export default function Checkout() {
-  const { total, items } = useCart();
+  const { total, items, clearCart } = useCart();
   const navigate = useNavigate();
-  const [paymentMethod, setPaymentMethod] = useState('card');
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    phone: '',
     address: '',
     city: '',
-    country: '',
-    cardNumber: '',
-    expiry: '',
-    cvv: '',
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [userId, setUserId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      const user = JSON.parse(storedUser);
+      setUserId(user.id);
+    } else {
+      alert('Please log in to place an order.');
+      navigate('/login');
+    }
+  }, [navigate]);
+
+  const loadRazorpay = () => {
+    return new Promise((resolve) => {
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => {
+        resolve(true);
+      };
+      script.onerror = () => {
+        resolve(false);
+      };
+      document.body.appendChild(script);
+    });
+  };
+
+  const displayRazorpay = async () => {
+    try {
+      setLoading(true);
+      const res = await loadRazorpay();
+      if (!res) {
+        alert('Razorpay SDK failed to load. Are you online?');
+        return;
+      }
+
+      // Create order on your backend
+      const orderResponse = await fetch('http://localhost:5000/api/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: total * 100, // Convert to paise
+          currency: 'INR',
+        }),
+      });
+
+      if (!orderResponse.ok) {
+        throw new Error(`Failed to create order: ${orderResponse.statusText}`);
+      }
+
+      const orderData = await orderResponse.json();
+
+      const options = {
+        key: 'rzp_test_TvIJ3qmt5faM08',
+        amount: total * 100,
+        currency: 'INR',
+        name: 'Your Store Name',
+        description: 'Payment for your order',
+        order_id: orderData.id,
+        handler: async function (response: any) {
+          // Handle successful payment
+          await handleOrderPlacement(response);
+        },
+        prefill: {
+          name: formData.name,
+          email: formData.email,
+          contact: formData.phone,
+        },
+        theme: {
+          color: '#000000',
+        },
+        modal: {
+          ondismiss: function() {
+            setLoading(false);
+          }
+        }
+      };
+
+      const paymentObject = new (window as any).Razorpay(options);
+      paymentObject.open();
+    } catch (error: any) {
+      console.error('Payment error:', error);
+      alert(`Payment error: ${error.message}`);
+      setLoading(false);
+    }
+  };
+
+  const handleOrderPlacement = async (paymentResponse: any) => {
+    try {
+      const orderData = {
+        userId,
+        ...formData,
+        items,
+        total,
+        paymentId: paymentResponse.razorpay_payment_id,
+        orderId: paymentResponse.razorpay_order_id,
+        signature: paymentResponse.razorpay_signature,
+      };
+
+      const response = await fetch('http://localhost:5000/api/place-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(orderData),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        alert('Order placed successfully!');
+        clearCart();
+        navigate('/');
+      } else {
+        alert(result.message || 'Failed to place order');
+      }
+    } catch (error) {
+      console.error('Order placement error:', error);
+      alert('An error occurred while placing the order.');
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, this would process the payment
-    alert('Order placed successfully!');
-    navigate('/');
+
+    if (!userId) {
+      alert("User ID not found. Please log in again.");
+      return;
+    }
+
+    await displayRazorpay();
   };
 
   if (items.length === 0) {
@@ -30,126 +153,48 @@ export default function Checkout() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-8">Checkout</h1>
+    <div className="max-w-3xl mx-auto px-6 py-8">
+      <h1 className="text-3xl font-bold mb-6 text-center">Checkout</h1>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
-        <div className="bg-white p-6 rounded-lg shadow-sm">
+      <form onSubmit={handleSubmit} className="space-y-8 bg-white p-8 rounded-lg shadow-lg">
+        <div>
           <h2 className="text-lg font-semibold mb-4">Shipping Information</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Full Name</label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {['name', 'email', 'phone', 'city'].map((field) => (
+              <div className="flex flex-col" key={field}>
+                <label className="text-sm font-medium text-gray-700">
+                  {field.charAt(0).toUpperCase() + field.slice(1)}
+                </label>
+                <input
+                  type={field === 'email' ? 'email' : 'text'}
+                  required
+                  placeholder={field === 'email' ? 'john@example.com' : ''}
+                  className="mt-1 w-full rounded-md border border-gray-300 shadow-sm p-2 focus:ring-black focus:border-black"
+                  value={formData[field as keyof typeof formData]}
+                  onChange={(e) => setFormData({ ...formData, [field]: e.target.value })}
+                />
+              </div>
+            ))}
+
+            <div className="flex flex-col md:col-span-2">
+              <label className="text-sm font-medium text-gray-700">Address</label>
               <input
                 type="text"
                 required
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Email</label>
-              <input
-                type="email"
-                required
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700">Address</label>
-              <input
-                type="text"
-                required
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                placeholder="123 Street, Apartment 4B"
+                className="mt-1 w-full rounded-md border border-gray-300 shadow-sm p-2 focus:ring-black focus:border-black"
                 value={formData.address}
                 onChange={(e) => setFormData({ ...formData, address: e.target.value })}
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">City</label>
-              <input
-                type="text"
-                required
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                value={formData.city}
-                onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Country</label>
-              <input
-                type="text"
-                required
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                value={formData.country}
-                onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-              />
-            </div>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow-sm">
-          <h2 className="text-lg font-semibold mb-4">Payment Method</h2>
-          <div className="space-y-4">
-            <div>
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="payment"
-                  value="card"
-                  checked={paymentMethod === 'card'}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                  className="mr-2"
-                />
-                Credit Card
-              </label>
-            </div>
-            
-            {paymentMethod === 'card' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700">Card Number</label>
-                  <input
-                    type="text"
-                    required
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                    value={formData.cardNumber}
-                    onChange={(e) => setFormData({ ...formData, cardNumber: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Expiry Date</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="MM/YY"
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                    value={formData.expiry}
-                    onChange={(e) => setFormData({ ...formData, expiry: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">CVV</label>
-                  <input
-                    type="text"
-                    required
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                    value={formData.cvv}
-                    onChange={(e) => setFormData({ ...formData, cvv: e.target.value })}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-lg shadow-sm">
+        <div>
           <h2 className="text-lg font-semibold mb-4">Order Summary</h2>
-          <div className="space-y-4">
+          <div className="bg-gray-100 p-4 rounded-md shadow-inner space-y-4">
             {items.map((item) => (
-              <div key={`Rs.{item.id}-Rs.{item.selectedSize}-Rs.{item.selectedColor}`} className="flex justify-between">
+              <div key={`${item.id}-${item.selectedSize}`} className="flex justify-between">
                 <span>{item.name} x {item.quantity}</span>
                 <span>Rs.{(item.price * item.quantity).toFixed(2)}</span>
               </div>
@@ -165,11 +210,15 @@ export default function Checkout() {
 
         <button
           type="submit"
-          className="w-full bg-black text-white py-3 rounded-md hover:bg-gray-800"
+          disabled={loading}
+          className={`w-full bg-black text-white py-3 rounded-md hover:bg-gray-800 transition-all ${
+            loading ? 'opacity-50 cursor-not-allowed' : ''
+          }`}
         >
-          Place Order
+          {loading ? 'Processing...' : 'Proceed to Payment'}
         </button>
       </form>
     </div>
   );
 }
+

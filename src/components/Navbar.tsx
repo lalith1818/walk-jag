@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ShoppingCart, User, Menu, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
@@ -9,13 +9,14 @@ export default function Navbar() {
   const { items } = useCart();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const navigate = useNavigate();
 
   return (
     <nav className="bg-white shadow-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <Link to="/" className="text-xl font-bold">Walk & Jag Shoeshop</Link>
+          <Link to="/" className="text-xl font-bold">Walk And Jag</Link>
 
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center space-x-6">
@@ -37,21 +38,29 @@ export default function Navbar() {
               )}
             </Link>
 
-            {/* User Icon & Name */}
+            {/* User Icon & Dropdown */}
             {user ? (
-              <div className="relative flex items-center space-x-2">
-                <User className="h-6 w-6" />
-                <span className="text-gray-700 font-semibold">{user.name}</span>
-
+              <div className="relative">
                 <button
-                  className="ml-2"
+                  className="flex items-center space-x-2"
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 >
-                  ▼
+                  <User className="h-6 w-6" />
+                  <span className="text-gray-700 font-semibold">{user.name}</span>
+                  <span>▼</span>
                 </button>
 
                 {isDropdownOpen && (
                   <div className="absolute right-0 w-48 mt-2 py-2 bg-white rounded-md shadow-xl z-10">
+                    <button
+                      onClick={() => {
+                        navigate('/profile');
+                        setIsDropdownOpen(false);
+                      }}
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                    >
+                      User Profile
+                    </button>
                     <button
                       onClick={() => {
                         logout();

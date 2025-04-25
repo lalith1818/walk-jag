@@ -1,0 +1,26 @@
+{
+  "name": "Walk and Jag Shoe Shop",
+  "short_name": "W&J",
+  "description": "A great shoe shopping experience",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#000000",
+  "icons": [
+    {
+      "src": "../images/wj.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "icons/icon-512x512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "serviceworker": {
+    "src": "./service-worker.js",
+    "scope": "/",
+  "type": "classic"
+  }
+}

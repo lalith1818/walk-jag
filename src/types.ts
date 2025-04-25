@@ -1,21 +1,22 @@
 export interface Product {
   id: number;
   name: string;
+  brand: string;
   price: number;
   image: string;
   category: string;
-  size: number[];
-  color: string[];
+  size: number;
   description: string;
 }
 
 export interface CartItem extends Product {
+  _id: any;
   quantity: number;
   selectedSize: number;
-  selectedColor: string;
 }
 
 export interface User {
   email: string;
   name: string;
 }
+

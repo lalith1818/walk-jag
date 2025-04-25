@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 export default function Signup() {
-  const [name, setName] = useState('');
+  const [name, setFullName] = useState('');
   const [email, setEmail] = useState('');
+  const [mobile, setMobile] = useState('');
+  const [address, setAddress] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -19,6 +21,8 @@ export default function Signup() {
       const { data } = await axios.post('http://localhost:5000/signup', {
         name,
         email,
+        mobile,
+        address,
         password,
       });
 
@@ -57,15 +61,31 @@ export default function Signup() {
             type="text"
             placeholder="Full Name"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => setFullName(e.target.value)}
             className="border p-2 w-full"
             required
           />
           <input
             type="email"
-            placeholder="Email Address"
+            placeholder="Email ID"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            className="border p-2 w-full"
+            required
+          />
+          <input
+            type="text"
+            placeholder="Mobile Number"
+            value={mobile}
+            onChange={(e) => setMobile(e.target.value)}
+            className="border p-2 w-full"
+            required
+          />
+          <input
+            type="text"
+            placeholder="Address"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
             className="border p-2 w-full"
             required
           />
